@@ -3,58 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>간호부 볼링대회</title>
+    <title>간호부 볼링대회-스토리없음</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
     <style>
-        body { margin: 0; padding: 0; overflow: hidden; background-color: #000; font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; }
+        body { margin: 0; padding: 0; overflow: hidden; background-color: #f0f2f5; font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; }
         #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; color: white; }
         
-        /* 시작 화면 */
         #start-screen { 
             position: absolute; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.95); 
             display: flex; flex-direction: column; align-items: center; justify-content: center; 
-            pointer-events: auto; text-align: center; color: #333; z-index: 100;
+            pointer-events: auto; text-align: center; color: #333;
         }
         .title { font-size: 3rem; font-weight: bold; color: #ff4757; margin-bottom: 20px; text-shadow: 0 0 10px rgba(255,71,87,0.2); }
         .instructions { font-size: 1.1rem; line-height: 1.6; margin-bottom: 40px; color: #444; }
         .btn { 
             padding: 15px 40px; font-size: 1.5rem; background: #2ed573; border: none; 
-            border-radius: 50px; color: white; cursor: pointer; transition: transform 0.2s, background 0.2s; 
-            box-shadow: 0 4px 15px rgba(46,213,115,0.4); pointer-events: auto;
+            border-radius: 50px; color: white; cursor: pointer; transition: transform 0.2s; 
+            box-shadow: 0 4px 15px rgba(46,213,115,0.4);
         }
         .btn:active { transform: scale(0.95); }
 
-        /* 오프닝 컨테이너 - 높이 부담 줄임 */
-        #opening-container {
-            position: absolute; width: 100%; height: 100%; background: #1a1a1a;
-            display: none; pointer-events: auto; z-index: 200;
-        }
-        .opening-scene {
-            position: absolute; width: 100%; height: 100%; opacity: 0;
-            transition: opacity 1s ease-in-out;
-            background-size: contain; /* 위아래 꽉 차지 않게 조절 */
-            background-repeat: no-repeat;
-            background-position: center;
-            display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
-            padding-bottom: 12vh; box-sizing: border-box;
-        }
-        .opening-scene.active { opacity: 1; }
-        .opening-text-box {
-            background: rgba(0, 0, 0, 0.8); padding: 25px 40px; border-radius: 15px;
-            color: white; font-size: 1.6rem; text-align: center; line-height: 1.6;
-            width: 85%; max-width: 600px; border: 2px solid rgba(255,255,255,0.2);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            margin-bottom: 20px;
-        }
-        #opening-next-btn {
-            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); 
-            z-index: 210; background: #ff4757; display: none;
-            min-width: 150px;
-        }
-
-        /* 게임 UI */
         #score-board { 
             position: absolute; top: 20px; left: 50%; transform: translateX(-50%); 
             background: rgba(255, 255, 255, 0.9); padding: 12px 30px; border-radius: 15px; border: 2px solid #ddd;
@@ -75,7 +45,8 @@
             position: absolute; padding: 5px 10px; background: white; color: black;
             border-radius: 10px; font-size: 0.9rem; font-weight: bold; pointer-events: none;
             transform: translate(-50%, -100%); display: none; box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-            border: 1px solid #ddd; z-index: 20; white-space: nowrap;
+            border: 1px solid #ddd; z-index: 20;
+            white-space: nowrap; 
         }
         .dialogue:after {
             content: ''; position: absolute; bottom: -5px; left: 50%; margin-left: -5px;
@@ -88,7 +59,6 @@
 <body>
 
     <div id="ui-layer">
-        <!-- 시작 화면 -->
         <div id="start-screen">
             <div class="title">💉 간호부 볼링대회</div>
             <div class="instructions">
@@ -96,27 +66,9 @@
                 총 3프레임 동안 경기가 진행됩니다.<br>
                 각 프레임당 2번의 투구 기회가 주어집니다.
             </div>
-            <button class="btn" onclick="startOpening()">경기 시작!</button>
+            <button class="btn" onclick="startGame()">경기 시작!</button>
         </div>
 
-        <!-- 오프닝 컨테이너 -->
-        <div id="opening-container">
-            <div id="scene-1" class="opening-scene" style="background-image: url('https://raw.githubusercontent.com/caxs23/3d-model/main/opening1.png');">
-                <div class="opening-text-box">오늘도 즐거운 출근길! 어떤 일을 하게 될까?</div>
-            </div>
-            <div id="scene-2" class="opening-scene" style="background-image: url('https://raw.githubusercontent.com/caxs23/3d-model/main/opening2.png');">
-                <div class="opening-text-box">그동안 우리를 신나게 넘어뜨렸겠다. 지금이다!</div>
-            </div>
-            <div id="scene-3" class="opening-scene" style="background-image: url('https://raw.githubusercontent.com/caxs23/3d-model/main/opening3.png');">
-                <div class="opening-text-box">으아악! 이게 뭐야!</div>
-            </div>
-            <div id="scene-4" class="opening-scene" style="background-image: url('https://raw.githubusercontent.com/caxs23/3d-model/main/opening4.png');">
-                <div class="opening-text-box">내가.. 볼링핀이 되어버렸어!!<br><br><span style="font-size: 1.1rem; color: #ffeb3b;">볼링핀이 되어버린 간호사로 볼링을 해보자!</span></div>
-            </div>
-            <button id="opening-next-btn" class="btn" onclick="nextOpeningScene()">계속</button>
-        </div>
-
-        <!-- 인게임 UI -->
         <div id="score-board" style="display: none;">
             <div class="score-item">
                 <span class="score-label">프레임</span>
@@ -164,52 +116,6 @@
         const strikeSound = new Audio(ASSETS.strikeSound);
         const throwSound = new Audio(ASSETS.throwSound);
 
-        // --- Opening Logic ---
-        let currentOpeningScene = 0;
-        const totalOpeningScenes = 4;
-
-        function startOpening() {
-            document.getElementById('start-screen').style.display = 'none';
-            document.getElementById('opening-container').style.display = 'block';
-            nextOpeningScene();
-        }
-
-        function nextOpeningScene() {
-            currentOpeningScene++;
-            
-            if (currentOpeningScene <= totalOpeningScenes) {
-                // 이전 씬 끄기
-                if (currentOpeningScene > 1) {
-                    document.getElementById(`scene-${currentOpeningScene - 1}`).classList.remove('active');
-                }
-                
-                // 현재 씬 켜기
-                const activeScene = document.getElementById(`scene-${currentOpeningScene}`);
-                activeScene.classList.add('active');
-                
-                // 마지막 씬이면 버튼 텍스트 변경 또는 계속 버튼 노출
-                const nextBtn = document.getElementById('opening-next-btn');
-                nextBtn.style.display = 'block';
-                
-                if (currentOpeningScene === totalOpeningScenes) {
-                    nextBtn.innerText = "진행하기";
-                } else {
-                    nextBtn.innerText = "계속";
-                }
-            } else {
-                // 게임 시작
-                finishOpening();
-            }
-        }
-
-        function finishOpening() {
-            document.getElementById('opening-container').style.display = 'none';
-            document.getElementById('score-board').style.display = 'flex';
-            gameActive = true;
-            resetFullPins();
-        }
-
-        // --- Core Game Logic ---
         function init() {
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0xe0e6ed); 
@@ -263,7 +169,11 @@
 
         function createEnvironment(wallMaterial) {
             const laneGeo = new THREE.BoxGeometry(6, 0.2, 40);
-            const laneMat = new THREE.MeshStandardMaterial({ color: 0xd2a679, roughness: 0.1, metalness: 0.05 });
+            const laneMat = new THREE.MeshStandardMaterial({ 
+                color: 0xd2a679, 
+                roughness: 0.1, 
+                metalness: 0.05 
+            });
             const lane = new THREE.Mesh(laneGeo, laneMat);
             lane.position.set(0, -0.1, -15);
             lane.receiveShadow = true;
@@ -274,6 +184,7 @@
             world.addBody(groundBody);
 
             const wallMat = new THREE.MeshStandardMaterial({ color: 0x444444 });
+            
             const wallL = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1, 40), wallMat);
             wallL.position.set(-3.25, 0.5, -15);
             scene.add(wallL);
@@ -295,7 +206,11 @@
             ball.castShadow = true;
             scene.add(ball);
 
-            ballBody = new CANNON.Body({ mass: 6, shape: new CANNON.Sphere(ballRadius), material: material });
+            ballBody = new CANNON.Body({ 
+                mass: 6, 
+                shape: new CANNON.Sphere(ballRadius),
+                material: material 
+            });
             world.addBody(ballBody);
             resetBall();
         }
@@ -323,20 +238,35 @@
                     const pinInstance = model.clone();
                     const x = (j - i * 0.5) * spacing;
                     const z = offsetZ - i * spacing;
+                    
                     pinInstance.scale.set(0.7, 0.7, 0.7);
                     scene.add(pinInstance);
                     pins.push(pinInstance);
 
-                    const pinBody = new CANNON.Body({ mass: 0.8, shape: new CANNON.Box(new CANNON.Vec3(0.3, 1.2, 0.3)), material: material });
+                    const pinBody = new CANNON.Body({ 
+                        mass: 0.8, 
+                        shape: new CANNON.Box(new CANNON.Vec3(0.3, 1.2, 0.3)),
+                        material: material 
+                    });
+                    
                     pinBody.addEventListener("collide", (e) => {
                         if (!isThrowing) return;
+
                         const impactVelocity = e.contact.getImpactVelocityAlongNormal();
+                        
+                        // 충돌음 재생 (시도당 1회)
                         if (!strikeSoundPlayed && (e.body === ballBody || e.target === ballBody) && impactVelocity > 2) {
-                            strikeSound.currentTime = 0; strikeSound.play().catch(e => console.log(e));
+                            strikeSound.currentTime = 0;
+                            strikeSound.play().catch(e => console.log("Strike audio play failed: ", e));
                             strikeSoundPlayed = true;
                         }
-                        if (impactVelocity > 1.5) showDialogue(pinInstance);
+
+                        // 대사 출력 (물리 충돌 시, 쿨타임 1.5초)
+                        if (impactVelocity > 1.5) {
+                            showDialogue(pinInstance);
+                        }
                     });
+
                     world.addBody(pinBody);
                     pinBodies.push(pinBody);
 
@@ -353,14 +283,23 @@
             pins.forEach((pin, i) => {
                 if (!pin.userData.isHit) {
                     const body = pinBodies[i];
-                    body.velocity.set(0,0,0); body.angularVelocity.set(0,0,0);
+                    body.velocity.set(0,0,0);
+                    body.angularVelocity.set(0,0,0);
                     body.position.set(pin.userData.initX, 1.2, pin.userData.initZ);
                     body.quaternion.set(0,0,0,1);
                     pin.visible = true;
                 } else {
-                    pin.visible = false; pinBodies[i].position.set(0, -100, 0); 
+                    pin.visible = false;
+                    pinBodies[i].position.set(0, -100, 0); 
                 }
             });
+        }
+
+        function startGame() {
+            document.getElementById('start-screen').style.display = 'none';
+            document.getElementById('score-board').style.display = 'flex';
+            gameActive = true;
+            resetFullPins();
         }
 
         function resetFullPins() {
@@ -387,8 +326,12 @@
 
         function throwBall(speedX, speedZ) {
             isThrowing = true;
-            strikeSoundPlayed = false;
-            throwSound.currentTime = 0; throwSound.play().catch(e => console.log(e));
+            strikeSoundPlayed = false; // 충돌음 재생 상태 초기화
+
+            // 투구 사운드 재생
+            throwSound.currentTime = 0;
+            throwSound.play().catch(e => console.log("Throw audio play failed: ", e));
+
             ballBody.velocity.set(speedX, 0, -speedZ);
             ballBody.angularVelocity.set(-speedZ, 0, -speedX);
             setTimeout(checkResult, 4500);
@@ -402,7 +345,8 @@
                     const up = new CANNON.Vec3(0, 1, 0);
                     const pinUp = body.quaternion.vmult(new CANNON.Vec3(0, 1, 0));
                     if (up.dot(pinUp) < 0.75 || body.position.y < 0.5) {
-                        hitThisTime++; pin.userData.isHit = true;
+                        hitThisTime++;
+                        pin.userData.isHit = true;
                     }
                 }
             });
@@ -422,10 +366,16 @@
             setTimeout(() => {
                 if (pinsStandingCount === 0 || shotCount === 2) {
                     if (frameCount < 3) {
-                        frameCount++; shotCount = 1; resetFullPins(); updateUI();
-                    } else endGame();
+                        frameCount++;
+                        shotCount = 1;
+                        resetFullPins();
+                        updateUI();
+                    } else {
+                        endGame();
+                    }
                 } else {
-                    shotCount = 2; updateUI();
+                    shotCount = 2;
+                    updateUI();
                 }
                 resetBall();
                 isThrowing = false;
@@ -440,11 +390,15 @@
         function showDialogue(pin) {
             const now = Date.now();
             if (now - pin.userData.lastDialogueTime < 1500) return;
+            
             const el = pin.userData.dialogueEl;
             el.innerText = DIALOGUES[Math.floor(Math.random() * DIALOGUES.length)];
             el.style.display = 'block';
             pin.userData.lastDialogueTime = now;
-            setTimeout(() => el.style.display = 'none', 1200);
+            
+            setTimeout(() => {
+                el.style.display = 'none';
+            }, 1200);
         }
 
         function showMessage(txt) {
@@ -456,9 +410,12 @@
         function resetCamera() { camera.position.set(0, 4, 12); camera.lookAt(0, 0, -5); }
 
         function resetBall() {
-            ballBody.velocity.set(0,0,0); ballBody.angularVelocity.set(0,0,0);
-            ballBody.position.set(0, 0.5, 4); ballBody.quaternion.set(0,0,0,1);
-            resetCamera(); positionPins(); 
+            ballBody.velocity.set(0,0,0);
+            ballBody.angularVelocity.set(0,0,0);
+            ballBody.position.set(0, 0.5, 4);
+            ballBody.quaternion.set(0,0,0,1);
+            resetCamera();
+            positionPins(); 
         }
 
         function endGame() {
@@ -467,17 +424,10 @@
             document.querySelector('.title').innerText = "대회 종료!";
             document.querySelector('.instructions').innerHTML = `최종 점수: <strong>${totalScore}점</strong><br>수고하셨습니다!`;
             document.querySelector('.btn').innerText = "다시 도전";
-            // 리셋 시 오프닝 재시작 안 함
-            document.querySelector('.btn').onclick = startGameDirectly;
             frameCount = 1; shotCount = 1; totalScore = 0;
-            updateUI(); resetFullPins(); resetBall();
-        }
-
-        function startGameDirectly() {
-            document.getElementById('start-screen').style.display = 'none';
-            document.getElementById('score-board').style.display = 'flex';
-            gameActive = true;
+            updateUI();
             resetFullPins();
+            resetBall();
         }
 
         function onWindowResize() {
@@ -507,14 +457,21 @@
                 pins.forEach((pin, i) => {
                     pin.position.copy(pinBodies[i].position);
                     pin.quaternion.copy(pinBodies[i].quaternion);
+                    
                     if (pin.userData.dialogueEl.style.display === 'block') {
                         const vector = pin.position.clone();
-                        vector.y += 1.5; vector.project(camera);
+                        vector.y += 1.5; 
+                        vector.project(camera);
+
                         const x = (vector.x * 0.5 + 0.5) * window.innerWidth;
                         const y = (vector.y * -0.5 + 0.5) * window.innerHeight;
+
                         pin.userData.dialogueEl.style.left = `${x}px`;
                         pin.userData.dialogueEl.style.top = `${y}px`;
-                        if (vector.z > 1 || vector.z < -1) pin.userData.dialogueEl.style.display = 'none';
+
+                        if (vector.z > 1 || vector.z < -1) {
+                            pin.userData.dialogueEl.style.display = 'none';
+                        }
                     }
                 });
             }
