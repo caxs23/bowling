@@ -3,17 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>간호부 볼링대회</title>
+    <title>간호부 볼링대회 - 수정본</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
     <style>
-        body { 
-            margin: 0; padding: 0; overflow: hidden; background-color: #000; 
-            font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; 
-            /* 모바일 스와이프 간섭 방지 */
-            touch-action: none; 
-        }
+        body { margin: 0; padding: 0; overflow: hidden; background-color: #000; font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; }
         #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; color: white; }
         
         /* 시작 화면 */
@@ -22,16 +17,16 @@
             display: flex; flex-direction: column; align-items: center; justify-content: center; 
             pointer-events: auto; text-align: center; color: #333; z-index: 100;
         }
-        .title { font-size: 2.5rem; font-weight: bold; color: #ff4757; margin-bottom: 20px; }
-        .instructions { font-size: 1rem; line-height: 1.6; margin-bottom: 30px; color: #444; padding: 0 20px; }
-        .btn-group { display: flex; flex-direction: column; gap: 12px; align-items: center; }
+        .title { font-size: 3rem; font-weight: bold; color: #ff4757; margin-bottom: 20px; text-shadow: 0 0 10px rgba(255,71,87,0.2); }
+        .instructions { font-size: 1.1rem; line-height: 1.6; margin-bottom: 40px; color: #444; }
+        .btn-group { display: flex; flex-direction: column; gap: 15px; align-items: center; }
         .btn { 
-            padding: 12px 30px; font-size: 1.2rem; background: #2ed573; border: none; 
-            border-radius: 50px; color: white; cursor: pointer; transition: transform 0.2s; 
+            padding: 15px 40px; font-size: 1.5rem; background: #2ed573; border: none; 
+            border-radius: 50px; color: white; cursor: pointer; transition: transform 0.2s, background 0.2s; 
             box-shadow: 0 4px 15px rgba(46,213,115,0.4); pointer-events: auto;
-            min-width: 250px;
+            min-width: 280px;
         }
-        .btn.secondary { background: #747d8c; box-shadow: 0 4px 15px rgba(116,125,140,0.4); }
+        .btn.secondary { background: #747d8c; box-shadow: 0 4px 15px rgba(116,125,140,0.4); font-size: 1.2rem; }
         .btn:active { transform: scale(0.95); }
 
         /* 오프닝 컨테이너 */
@@ -41,43 +36,56 @@
         }
         .opening-scene {
             position: absolute; width: 100%; height: 100%; opacity: 0;
-            transition: opacity 0.8s ease-in-out;
-            background-size: contain; background-repeat: no-repeat; background-position: center;
+            transition: opacity 1s ease-in-out;
+            background-size: contain; 
+            background-repeat: no-repeat;
+            background-position: center;
             display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
-            padding-bottom: 15vh;
+            padding-bottom: 12vh; box-sizing: border-box;
         }
         .opening-scene.active { opacity: 1; }
         .opening-text-box {
-            background: rgba(0, 0, 0, 0.85); padding: 20px 30px; border-radius: 12px;
-            color: white; font-size: 1.3rem; text-align: center; line-height: 1.5;
-            width: 80%; max-width: 500px; border: 1px solid rgba(255,255,255,0.2);
+            background: rgba(0, 0, 0, 0.8); padding: 25px 40px; border-radius: 15px;
+            color: white; font-size: 1.6rem; text-align: center; line-height: 1.6;
+            width: 85%; max-width: 600px; border: 2px solid rgba(255,255,255,0.2);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            margin-bottom: 20px;
         }
-        #opening-next-btn { position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); z-index: 210; }
+        #opening-next-btn {
+            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); 
+            z-index: 210; background: #ff4757; display: none;
+            min-width: 150px;
+        }
 
         /* 게임 UI */
         #score-board { 
-            position: absolute; top: 15px; left: 50%; transform: translateX(-50%); 
-            background: rgba(255, 255, 255, 0.9); padding: 10px 25px; border-radius: 12px;
-            display: flex; gap: 30px; font-size: 1rem; color: #333; box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-            min-width: 280px; justify-content: space-around;
+            position: absolute; top: 20px; left: 50%; transform: translateX(-50%); 
+            background: rgba(255, 255, 255, 0.9); padding: 12px 30px; border-radius: 15px; border: 2px solid #ddd;
+            display: flex; gap: 40px; font-size: 1.1rem; color: #333; box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            min-width: 320px; justify-content: space-around; white-space: nowrap;
         }
-        .score-item { display: flex; flex-direction: column; align-items: center; }
-        .score-label { font-size: 0.8rem; color: #666; margin-bottom: 2px; }
-        .score-val { font-weight: bold; color: #ff4757; font-size: 1.3rem; }
+        .score-item { display: flex; flex-direction: column; align-items: center; min-width: 80px; }
+        .score-label { font-size: 0.9rem; color: #666; margin-bottom: 4px; font-weight: 600; }
+        .score-val { font-weight: bold; color: #ff4757; font-size: 1.5rem; line-height: 1; }
 
         #message-box { 
-            position: absolute; top: 25%; left: 50%; transform: translate(-50%, -50%); 
-            font-size: 3.5rem; font-weight: 900; color: #ff4757; text-shadow: 2px 2px 5px rgba(255,255,255,0.8);
-            opacity: 0; transition: opacity 0.3s; pointer-events: none;
+            position: absolute; top: 30%; left: 50%; transform: translate(-50%, -50%); 
+            font-size: 4rem; font-weight: 900; color: #ff4757; text-shadow: 2px 2px 5px rgba(255,255,255,0.8);
+            opacity: 0; transition: opacity 0.3s; pointer-events: none; text-align: center;
         }
 
         .dialogue {
-            position: absolute; padding: 5px 12px; background: white; color: black;
-            border-radius: 8px; font-size: 0.85rem; font-weight: bold; pointer-events: none;
+            position: absolute; padding: 5px 10px; background: white; color: black;
+            border-radius: 10px; font-size: 0.9rem; font-weight: bold; pointer-events: none;
             transform: translate(-50%, -100%); display: none; box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-            z-index: 20; white-space: nowrap; border: 1px solid #ddd;
+            border: 1px solid #ddd; z-index: 20; white-space: nowrap;
         }
-        canvas { display: block; }
+        .dialogue:after {
+            content: ''; position: absolute; bottom: -5px; left: 50%; margin-left: -5px;
+            width: 0; height: 0; border-top: 5px solid white; border-left: 5px solid transparent; border-right: 5px solid transparent;
+        }
+
+        canvas { display: block; cursor: crosshair; }
     </style>
 </head>
 <body>
@@ -86,12 +94,13 @@
         <div id="start-screen">
             <div class="title">💉 간호부 볼링대회</div>
             <div class="instructions">
-                화면을 <strong>위로 빠르게 스와이프</strong>하여 공을 던지세요!<br>
-                핀을 쓰러뜨려 스트레스를 날려버리세요.
+                화면을 <strong>원하는 방향으로 빠르게 스와이프</strong>하여 공을 굴리세요!<br>
+                총 3프레임 동안 경기가 진행됩니다.<br>
+                각 프레임당 2번의 투구 기회가 주어집니다.
             </div>
             <div class="btn-group">
                 <button class="btn" onclick="startOpening()">경기 시작 (오프닝 보기)</button>
-                <button class="btn secondary" onclick="startGameDirectly()">바로 시작</button>
+                <button class="btn secondary" onclick="startGameDirectly()">컷신 없이 바로 시작</button>
             </div>
         </div>
 
@@ -106,15 +115,24 @@
                 <div class="opening-text-box">으아악! 이게 뭐야!</div>
             </div>
             <div id="scene-4" class="opening-scene" style="background-image: url('https://raw.githubusercontent.com/caxs23/3d-model/main/opening4.png');">
-                <div class="opening-text-box">내가.. 볼링핀이 되어버렸어!!</div>
+                <div class="opening-text-box">내가.. 볼링핀이 되어버렸어!!<br><br><span style="font-size: 1.1rem; color: #ffeb3b;">볼링핀이 되어버린 간호사로 볼링을 해보자!</span></div>
             </div>
             <button id="opening-next-btn" class="btn" onclick="nextOpeningScene()">계속</button>
         </div>
 
         <div id="score-board" style="display: none;">
-            <div class="score-item"><span class="score-label">프레임</span><span class="score-val" id="frame-num">1</span></div>
-            <div class="score-item"><span class="score-label">투구</span><span class="score-val" id="shot-num">1</span></div>
-            <div class="score-item"><span class="score-label">점수</span><span class="score-val" id="total-score">0</span></div>
+            <div class="score-item">
+                <span class="score-label">프레임</span>
+                <span class="score-val" id="frame-num">1</span>
+            </div>
+            <div class="score-item">
+                <span class="score-label">투구</span>
+                <span class="score-val" id="shot-num">1</span>
+            </div>
+            <div class="score-item">
+                <span class="score-label">현재 점수</span>
+                <span class="score-val" id="total-score">0</span>
+            </div>
         </div>
 
         <div id="message-box">STRIKE!</div>
@@ -129,20 +147,66 @@
             throwSound: 'https://raw.githubusercontent.com/caxs23/3d-model/main/throw.mp3'
         };
 
-        const DIALOGUES = ["으악!", "살려주세요", "퇴근하고 싶어", "선생님!", "도망쳐!", "휴가 보내줘!"];
+        const DIALOGUES = ["으악!", "살려주세요", "억", "아이고", "퇴근하고 싶어", "선생님!", "꺅", "도망쳐!", "휴가 보내줘!", "오버타임 싫어!"];
 
         let scene, camera, renderer, world;
         let ball, ballBody, pins = [], pinBodies = [];
-        let isThrowing = false, gameActive = false;
-        let frameCount = 1, shotCount = 1, totalScore = 0, pinsStandingCount = 10;
+        let isThrowing = false;
+        let frameCount = 1;
+        let shotCount = 1;
+        let totalScore = 0;
+        let gameActive = false;
+        let pinsStandingCount = 10;
+        let strikeSoundPlayed = false;
+
         let swipeStart = { x: 0, y: 0, time: 0 };
-        
+        let isMouseDown = false;
+
         const strikeSound = new Audio(ASSETS.strikeSound);
         const throwSound = new Audio(ASSETS.throwSound);
 
+        let currentOpeningScene = 0;
+        const totalOpeningScenes = 4;
+
+        function startOpening() {
+            document.getElementById('start-screen').style.display = 'none';
+            document.getElementById('opening-container').style.display = 'block';
+            currentOpeningScene = 0; 
+            nextOpeningScene();
+        }
+
+        function nextOpeningScene() {
+            currentOpeningScene++;
+            if (currentOpeningScene <= totalOpeningScenes) {
+                if (currentOpeningScene > 1) document.getElementById(`scene-${currentOpeningScene - 1}`).classList.remove('active');
+                const activeScene = document.getElementById(`scene-${currentOpeningScene}`);
+                activeScene.classList.add('active');
+                const nextBtn = document.getElementById('opening-next-btn');
+                nextBtn.style.display = 'block';
+                nextBtn.innerText = (currentOpeningScene === totalOpeningScenes) ? "진행하기" : "계속";
+            } else {
+                finishOpening();
+            }
+        }
+
+        function finishOpening() {
+            document.getElementById('opening-container').style.display = 'none';
+            document.getElementById('score-board').style.display = 'flex';
+            gameActive = true;
+            resetFullPins();
+        }
+
+        function startGameDirectly() {
+            document.getElementById('start-screen').style.display = 'none';
+            document.getElementById('opening-container').style.display = 'none';
+            document.getElementById('score-board').style.display = 'flex';
+            gameActive = true;
+            resetFullPins();
+        }
+
         function init() {
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0xe0e6ed);
+            scene.background = new THREE.Color(0xe0e6ed); 
             scene.fog = new THREE.Fog(0xe0e6ed, 20, 60);
 
             camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -155,114 +219,171 @@
 
             world = new CANNON.World();
             world.gravity.set(0, -9.82, 0);
-            world.allowSleep = true; // Sleep 기능 활성화
+            // [수정] 월드 전체에 Sleep 기능 활성화
+            world.allowSleep = true;
+
+            const wallPhysMaterial = new CANNON.Material("wallMaterial");
+            const ballPhysMaterial = new CANNON.Material("ballMaterial");
+            const pinPhysMaterial = new CANNON.Material("pinMaterial");
+
+            const wallContact = new CANNON.ContactMaterial(ballPhysMaterial, wallPhysMaterial, { friction: 0.1, restitution: 0.7 });
+            const pinContact = new CANNON.ContactMaterial(ballPhysMaterial, pinPhysMaterial, { friction: 0.3, restitution: 0.3 });
+            world.addContactMaterial(wallContact);
+            world.addContactMaterial(pinContact);
 
             createLights();
-            createEnvironment();
-            createBall();
-            loadPinModel();
+            createEnvironment(wallPhysMaterial);
+            createBall(ballPhysMaterial);
+            loadPinModel(pinPhysMaterial);
 
-            // 이벤트 리스너 (터치 간섭 해결 포함)
             window.addEventListener('resize', onWindowResize);
-            document.addEventListener('touchstart', onTouchStart, { passive: false });
-            document.addEventListener('touchend', onTouchEnd, { passive: false });
+            document.addEventListener('touchstart', onTouchStart);
+            document.addEventListener('touchend', onTouchEnd);
             document.addEventListener('mousedown', onMouseDown);
             document.addEventListener('mouseup', onMouseUp);
         }
 
         function createLights() {
-            scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+            scene.add(new THREE.AmbientLight(0xffffff, 0.8));
             const sun = new THREE.DirectionalLight(0xffffff, 1);
-            sun.position.set(5, 15, 5);
+            sun.position.set(10, 20, 10);
             sun.castShadow = true;
             scene.add(sun);
+            scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 0.5));
         }
 
-        function createEnvironment() {
+        function createEnvironment(wallMaterial) {
             const laneGeo = new THREE.BoxGeometry(6, 0.2, 40);
-            const laneMat = new THREE.MeshStandardMaterial({ color: 0xd2a679 });
+            const laneMat = new THREE.MeshStandardMaterial({ color: 0xd2a679, roughness: 0.2, metalness: 0.05 });
             const lane = new THREE.Mesh(laneGeo, laneMat);
             lane.position.set(0, -0.1, -15);
             lane.receiveShadow = true;
             scene.add(lane);
 
+            const plankWidth = 0.5;
+            const lineMat = new THREE.MeshBasicMaterial({ color: 0x555555, transparent: true, opacity: 0.4 });
+            for (let x = -2.5; x <= 2.5; x += plankWidth) {
+                const lineGeo = new THREE.PlaneGeometry(0.02, 40);
+                const line = new THREE.Mesh(lineGeo, lineMat);
+                line.rotation.x = -Math.PI / 2;
+                line.position.set(x, 0.005, -15);
+                scene.add(line);
+            }
+
             const groundBody = new CANNON.Body({ mass: 0, shape: new CANNON.Box(new CANNON.Vec3(3, 0.1, 20)) });
             groundBody.position.set(0, -0.1, -15);
             world.addBody(groundBody);
+
+            const wallMat = new THREE.MeshStandardMaterial({ color: 0x444444 });
+            const wallL = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1, 40), wallMat);
+            wallL.position.set(-3.25, 0.5, -15);
+            scene.add(wallL);
+            const wallLBody = new CANNON.Body({ mass: 0, shape: new CANNON.Box(new CANNON.Vec3(0.25, 0.5, 20)), material: wallMaterial });
+            wallLBody.position.set(-3.25, 0.5, -15);
+            world.addBody(wallLBody);
+
+            const wallR = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1, 40), wallMat);
+            wallR.position.set(3.25, 0.5, -15);
+            scene.add(wallR);
+            const wallRBody = new CANNON.Body({ mass: 0, shape: new CANNON.Box(new CANNON.Vec3(0.25, 0.5, 20)), material: wallMaterial });
+            wallRBody.position.set(3.25, 0.5, -15);
+            world.addBody(wallRBody);
         }
 
-        function createBall() {
+        function createBall(material) {
             const ballRadius = 0.5;
-            ball = new THREE.Mesh(
+            ball = new THREE.Group();
+            const sphere = new THREE.Mesh(
                 new THREE.SphereGeometry(ballRadius, 32, 32), 
-                new THREE.MeshStandardMaterial({ color: 0xff4757, metalness: 0.5, roughness: 0.2 })
+                new THREE.MeshStandardMaterial({ color: 0xff4757, metalness: 0.6, roughness: 0.1 })
             );
-            ball.castShadow = true;
-            scene.add(ball);
+            sphere.castShadow = true;
+            ball.add(sphere);
 
-            ballBody = new CANNON.Body({ mass: 6, shape: new CANNON.Sphere(ballRadius) });
+            const holeGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.05, 16);
+            const holeMat = new THREE.MeshBasicMaterial({ color: 0x111111 });
+            const holes = [
+                { x: 0, y: 0.45, z: 0.15, rx: 0.4 },
+                { x: 0.15, y: 0.43, z: 0.05, rx: 0.4, ry: 0.3 },
+                { x: -0.15, y: 0.43, z: 0.05, rx: 0.4, ry: -0.3 }
+            ];
+            holes.forEach(data => {
+                const hole = new THREE.Mesh(holeGeo, holeMat);
+                hole.position.set(data.x, data.y, data.z);
+                if (data.rx) hole.rotation.x = data.rx;
+                if (data.ry) hole.rotation.z = data.ry;
+                ball.add(hole);
+            });
+
+            scene.add(ball);
+            ballBody = new CANNON.Body({ mass: 6, shape: new CANNON.Sphere(ballRadius), material: material });
             world.addBody(ballBody);
             resetBall();
         }
 
-        function loadPinModel() {
+        function loadPinModel(material) {
             const loader = new THREE.OBJLoader();
             const texLoader = new THREE.TextureLoader();
             const diffuse = texLoader.load(ASSETS.diffuse);
-            const pinMaterial = new THREE.MeshStandardMaterial({ map: diffuse });
+            const pbr = texLoader.load(ASSETS.pbr);
+            const pinMaterial = new THREE.MeshStandardMaterial({ map: diffuse, roughnessMap: pbr, metalness: 0.3 });
 
             loader.load(ASSETS.obj, (obj) => {
+                // [수정] 모델의 기하학적 중심을 정중앙(0,0,0)으로 이동시켜 물리 바디와 일치시킴
                 obj.traverse((child) => { 
                     if (child.isMesh) { 
-                        child.geometry.center(); // 모델 중심점 보정 (파묻힘 방지 핵심)
+                        child.geometry.center(); 
                         child.material = pinMaterial; 
                         child.castShadow = true; 
                     } 
                 });
-                setupPins(obj);
+                setupPins(obj, material);
             });
         }
 
-        function setupPins(model) {
+        function setupPins(model, material) {
             const spacing = 1.3;
             const offsetZ = -22;
+            const rows = 4;
+            // [수정] 핀 높이와 충돌 박스 크기 최적화
             const pinHeight = 1.8;
 
-            for (let i = 0; i < 4; i++) {
+            for (let i = 0; i < rows; i++) {
                 for (let j = 0; j <= i; j++) {
                     const pinInstance = model.clone();
                     const x = (j - i * 0.5) * spacing;
                     const z = offsetZ - i * spacing;
+                    pinInstance.scale.set(1.05, 1.05, 1.05);
                     scene.add(pinInstance);
                     pins.push(pinInstance);
 
-                    const body = new CANNON.Body({ 
+                    const pinBody = new CANNON.Body({ 
                         mass: 0.8, 
-                        shape: new CANNON.Box(new CANNON.Vec3(0.3, pinHeight/2, 0.3)),
+                        shape: new CANNON.Box(new CANNON.Vec3(0.3, pinHeight / 2, 0.3)), 
+                        material: material,
+                        // [수정] 개별 바디에 Sleep 허용 및 설정
                         allowSleep: true,
                         sleepSpeedLimit: 0.1,
                         sleepTimeLimit: 1.0
                     });
                     
-                    body.addEventListener("collide", () => {
-                        if (isThrowing) showDialogue(pinInstance);
+                    pinBody.addEventListener("collide", (e) => {
+                        if (!isThrowing) return;
+                        const impactVelocity = e.contact.getImpactVelocityAlongNormal();
+                        if (!strikeSoundPlayed && (e.body === ballBody || e.target === ballBody) && impactVelocity > 2) {
+                            strikeSound.currentTime = 0; strikeSound.play().catch(e => console.log(e));
+                            strikeSoundPlayed = true;
+                        }
+                        if (impactVelocity > 1.5) showDialogue(pinInstance);
                     });
-                    
-                    world.addBody(body);
-                    pinBodies.push(body);
+                    world.addBody(pinBody);
+                    pinBodies.push(pinBody);
 
                     const el = document.createElement('div');
                     el.className = 'dialogue';
                     document.body.appendChild(el);
                     
-                    pinInstance.userData = { 
-                        dialogueEl: el, 
-                        isHit: false, 
-                        initX: x, 
-                        initZ: z, 
-                        halfHeight: pinHeight/2,
-                        lastTime: 0 
-                    };
+                    pinInstance.userData = { dialogueEl: el, isHit: false, initX: x, initZ: z, lastDialogueTime: 0, halfHeight: pinHeight / 2 };
                 }
             }
             positionPins();
@@ -272,86 +393,19 @@
             pins.forEach((pin, i) => {
                 const body = pinBodies[i];
                 if (!pin.userData.isHit) {
-                    body.velocity.set(0,0,0);
+                    body.velocity.set(0,0,0); 
                     body.angularVelocity.set(0,0,0);
-                    // 바닥에 딱 붙게 설정
+                    // [수정] 바디의 중심 위치를 핀 높이의 절반에 맞춰 바닥에 딱 붙게 설정
                     body.position.set(pin.userData.initX, pin.userData.halfHeight, pin.userData.initZ);
                     body.quaternion.set(0,0,0,1);
                     pin.visible = true;
-                    body.sleep(); // 시작 시 Sleep 모드 적용
+                    // [수정] 배치 직후 바로 Sleep 모드 진입 (충격 전까지 안 움직임)
+                    body.sleep();
                 } else {
-                    pin.visible = false;
-                    body.position.set(0, -100, 0);
+                    pin.visible = false; 
+                    body.position.set(0, -100, 0); 
                 }
             });
-        }
-
-        // --- 입력 로직 ---
-        function handleStart(x, y) {
-            if (!gameActive || isThrowing) return;
-            swipeStart = { x, y, time: Date.now() };
-        }
-
-        function handleEnd(x, y) {
-            if (!gameActive || isThrowing) return;
-            const dx = x - swipeStart.x;
-            const dy = swipeStart.y - y;
-            const dt = Date.now() - swipeStart.time;
-
-            if (dy > 30 && dt < 500) {
-                const forceZ = Math.min(dy / dt * 15, 45);
-                const forceX = (dx / dt) * 5;
-                throwBall(forceX, forceZ);
-            }
-        }
-
-        function onTouchStart(e) { e.preventDefault(); handleStart(e.touches[0].clientX, e.touches[0].clientY); }
-        function onTouchEnd(e) { e.preventDefault(); handleEnd(e.changedTouches[0].clientX, e.changedTouches[0].clientY); }
-        function onMouseDown(e) { handleStart(e.clientX, e.clientY); }
-        function onMouseUp(e) { handleEnd(e.clientX, e.clientY); }
-
-        function throwBall(vx, vz) {
-            isThrowing = true;
-            throwSound.play().catch(()=>{});
-            ballBody.velocity.set(vx, 0, -vz);
-            ballBody.angularVelocity.set(-vz, 0, -vx);
-            setTimeout(checkResult, 4500);
-        }
-
-        function checkResult() {
-            let hitCount = 0;
-            pins.forEach((pin, idx) => {
-                if (!pin.userData.isHit) {
-                    const body = pinBodies[idx];
-                    const up = new CANNON.Vec3(0, 1, 0);
-                    const pinUp = body.quaternion.vmult(new CANNON.Vec3(0, 1, 0));
-                    // 핀이 기울어지거나 높이가 낮아지면 쓰러진 것으로 간주
-                    if (up.dot(pinUp) < 0.75 || body.position.y < pin.userData.halfHeight * 0.5) {
-                        hitCount++; pin.userData.isHit = true;
-                    }
-                }
-            });
-
-            totalScore += hitCount;
-            pinsStandingCount -= hitCount;
-            document.getElementById('total-score').innerText = totalScore;
-
-            if (hitCount > 0) {
-                strikeSound.play().catch(()=>{});
-                showMessage(pinsStandingCount === 0 ? (shotCount === 1 ? "STRIKE!" : "SPARE!") : `${hitCount} PINS!`);
-            } else {
-                showMessage("GUTTER...");
-            }
-
-            setTimeout(() => {
-                if (pinsStandingCount === 0 || shotCount === 2) {
-                    if (frameCount < 3) { frameCount++; shotCount = 1; resetFullPins(); } 
-                    else { endGame(); return; }
-                } else { shotCount = 2; }
-                updateUI();
-                resetBall();
-                isThrowing = false;
-            }, 1500);
         }
 
         function resetFullPins() {
@@ -360,69 +414,110 @@
             positionPins();
         }
 
+        function startAction(x, y) { if (!gameActive || isThrowing) return; swipeStart = { x, y, time: Date.now() }; }
+        function endAction(x, y) {
+            if (!gameActive || isThrowing) return;
+            const deltaX = x - swipeStart.x, deltaY = swipeStart.y - y, deltaTime = Date.now() - swipeStart.time;
+            if (deltaY > 50 && deltaTime < 400) {
+                const speedZ = Math.min(deltaY / deltaTime * 12, 40);
+                const speedX = (deltaX / deltaTime) * 5; 
+                throwBall(speedX, speedZ);
+            }
+        }
+
+        function onTouchStart(e) { startAction(e.touches[0].clientX, e.touches[0].clientY); }
+        function onTouchEnd(e) { endAction(e.changedTouches[0].clientX, e.changedTouches[0].clientY); }
+        function onMouseDown(e) { isMouseDown = true; startAction(e.clientX, e.clientY); }
+        function onMouseUp(e) { if(isMouseDown) { isMouseDown = false; endAction(e.clientX, e.clientY); } }
+
+        function throwBall(speedX, speedZ) {
+            isThrowing = true;
+            strikeSoundPlayed = false;
+            throwSound.currentTime = 0; throwSound.play().catch(e => console.log(e));
+            ballBody.velocity.set(speedX, 0, -speedZ);
+            ballBody.angularVelocity.set(-speedZ, 0, -speedX);
+            setTimeout(checkResult, 4500);
+        }
+
+        function checkResult() {
+            let hitThisTime = 0;
+            pins.forEach((pin, idx) => {
+                if (!pin.userData.isHit) {
+                    const body = pinBodies[idx];
+                    const up = new CANNON.Vec3(0, 1, 0);
+                    const pinUp = body.quaternion.vmult(new CANNON.Vec3(0, 1, 0));
+                    if (up.dot(pinUp) < 0.75 || body.position.y < (pin.userData.halfHeight * 0.6)) {
+                        hitThisTime++; pin.userData.isHit = true;
+                    }
+                }
+            });
+
+            totalScore += hitThisTime;
+            pinsStandingCount -= hitThisTime;
+            document.getElementById('total-score').innerText = totalScore;
+
+            if (hitThisTime > 0) {
+                if (shotCount === 1 && pinsStandingCount === 0) showMessage("STRIKE!");
+                else if (shotCount === 2 && pinsStandingCount === 0) showMessage("SPARE!");
+                else showMessage(`${hitThisTime} PINS!`);
+            } else {
+                showMessage("GUTTER...");
+            }
+
+            setTimeout(() => {
+                if (pinsStandingCount === 0 || shotCount === 2) {
+                    if (frameCount < 3) { frameCount++; shotCount = 1; resetFullPins(); updateUI(); } 
+                    else endGame();
+                } else { shotCount = 2; updateUI(); }
+                resetBall();
+                isThrowing = false;
+            }, 2000);
+        }
+
         function updateUI() {
             document.getElementById('frame-num').innerText = frameCount;
             document.getElementById('shot-num').innerText = shotCount;
         }
 
-        function showMessage(txt) {
-            const m = document.getElementById('message-box');
-            m.innerText = txt; m.style.opacity = '1';
-            setTimeout(() => m.style.opacity = '0', 2000);
-        }
-
         function showDialogue(pin) {
-            if (Date.now() - pin.userData.lastTime < 1000) return;
+            const now = Date.now();
+            if (now - pin.userData.lastDialogueTime < 1500) return;
             const el = pin.userData.dialogueEl;
-            el.innerText = DIALOGUES[Math.floor(Math.random()*DIALOGUES.length)];
+            el.innerText = DIALOGUES[Math.floor(Math.random() * DIALOGUES.length)];
             el.style.display = 'block';
-            pin.userData.lastTime = Date.now();
+            pin.userData.lastDialogueTime = now;
             setTimeout(() => el.style.display = 'none', 1200);
         }
 
-        function resetBall() {
-            ballBody.velocity.set(0,0,0); ballBody.angularVelocity.set(0,0,0);
-            ballBody.position.set(0, 0.5, 4); ballBody.quaternion.set(0,0,0,1);
-            resetCamera(); positionPins();
+        function showMessage(txt) {
+            const msg = document.getElementById('message-box');
+            msg.innerText = txt; msg.style.opacity = '1';
+            setTimeout(() => msg.style.opacity = '0', 2000);
         }
 
         function resetCamera() { camera.position.set(0, 4, 12); camera.lookAt(0, 0, -5); }
 
-        function onWindowResize() {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        }
-
-        function startOpening() {
-            document.getElementById('start-screen').style.display = 'none';
-            document.getElementById('opening-container').style.display = 'block';
-            nextOpeningScene();
-        }
-        
-        let curScene = 0;
-        function nextOpeningScene() {
-            if (curScene > 0) document.getElementById(`scene-${curScene}`).classList.remove('active');
-            curScene++;
-            if (curScene <= 4) {
-                document.getElementById(`scene-${curScene}`).classList.add('active');
-            } else {
-                startGameDirectly();
-            }
-        }
-
-        function startGameDirectly() {
-            document.getElementById('start-screen').style.display = 'none';
-            document.getElementById('opening-container').style.display = 'none';
-            document.getElementById('score-board').style.display = 'flex';
-            gameActive = true; resetFullPins();
+        function resetBall() {
+            ballBody.velocity.set(0,0,0); ballBody.angularVelocity.set(0,0,0);
+            ballBody.position.set(0, 0.5, 4); ballBody.quaternion.set(0,0,0,1);
+            resetCamera(); positionPins(); 
         }
 
         function endGame() {
             gameActive = false;
             document.getElementById('start-screen').style.display = 'flex';
-            document.querySelector('.title').innerText = "결과: " + totalScore + "점!";
+            document.querySelector('.title').innerText = "대회 종료!";
+            document.querySelector('.instructions').innerHTML = `최종 점수: <strong>${totalScore}점</strong><br>수고하셨습니다!`;
+            const btnGroup = document.querySelector('.btn-group');
+            btnGroup.innerHTML = `<button class="btn" onclick="startOpening()">다시 하기 (오프닝 포함)</button><button class="btn secondary" onclick="startGameDirectly()">컷신 없이 바로 시작</button>`;
             frameCount = 1; shotCount = 1; totalScore = 0;
+            updateUI(); resetFullPins(); resetBall();
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
         }
 
         function animate() {
@@ -432,20 +527,31 @@
                 ball.position.copy(ballBody.position);
                 ball.quaternion.copy(ballBody.quaternion);
 
-                if (isThrowing && ball.position.z > -20) {
-                    camera.position.z += (ball.position.z + 6 - camera.position.z) * 0.1;
-                    camera.lookAt(ball.position.x, 1, ball.position.z - 5);
+                if (isThrowing) {
+                    if (ball.position.z > -15) {
+                        camera.position.z += (ball.position.z + 6 - camera.position.z) * 0.1;
+                        camera.position.x += (ball.position.x * 0.5 - camera.position.x) * 0.1;
+                        camera.lookAt(ball.position.x, 1, ball.position.z - 5);
+                    } else {
+                        camera.position.lerp(new THREE.Vector3(0, 3, -13), 0.05);
+                        camera.lookAt(0, 0.5, -23);
+                    }
                 }
 
                 pins.forEach((pin, i) => {
+                    // [수정] 모델 기하학 중심을 맞췄으므로 위치와 회전값을 그대로 복사하면 정확히 일치함
                     pin.position.copy(pinBodies[i].position);
                     pin.quaternion.copy(pinBodies[i].quaternion);
 
                     if (pin.userData.dialogueEl.style.display === 'block') {
-                        const v = pin.position.clone();
-                        v.y += 1.5; v.project(camera);
-                        pin.userData.dialogueEl.style.left = `${(v.x * 0.5 + 0.5) * window.innerWidth}px`;
-                        pin.userData.dialogueEl.style.top = `${(v.y * -0.5 + 0.5) * window.innerHeight}px`;
+                        const vector = pin.position.clone();
+                        vector.y += (pin.userData.halfHeight * 2);
+                        vector.project(camera);
+                        const x = (vector.x * 0.5 + 0.5) * window.innerWidth;
+                        const y = (vector.y * -0.5 + 0.5) * window.innerHeight;
+                        pin.userData.dialogueEl.style.left = `${x}px`;
+                        pin.userData.dialogueEl.style.top = `${y}px`;
+                        if (vector.z > 1 || vector.z < -1) pin.userData.dialogueEl.style.display = 'none';
                     }
                 });
             }
