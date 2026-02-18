@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>간호부 볼링대회-스토리없음</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
+    <style>
+        body { margin: 0; padding: 0; overflow: hidden; background-color: #f0f2f5; font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; }
+        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; color: white; }
+        
+        #start-screen { 
+            position: absolute; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.95); 
+            display: flex; flex-direction: column; align-items: center; justify-content: center; 
+            pointer-events: auto; text-align: center; color: #333;
+        }
+        .title { font-size: 3rem; font-weight: bold; color: #ff4757; margin-bottom: 20px; text-shadow: 0 0 10px rgba(255,71,87,0.2); }
+        .instructions { font-size: 1.1rem; line-height: 1.6; margin-bottom: 40px; color: #444; }
+        .btn { 
+            padding: 15px 40px; font-size: 1.5rem; background: #2ed573; border: none; 
+            border-radius: 50px; color: white; cursor: pointer; transition: transform 0.2s; 
+            box-shadow: 0 4px 15px rgba(46,213,115,0.4);
+        }
+        .btn:active { transform: scale(0.95); }
+
+        #score-board { 
+            position: absolute; top: 20px; left: 50%; transform: translateX(-50%); 
+            background: rgba(255, 255, 255, 0.9); padding: 12px 30px; border-radius: 15px; border: 2px solid #ddd;
+            display: flex; gap: 40px; font-size: 1.1rem; color: #333; box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            min-width: 320px; justify-content: space-around; white-space: nowrap;
+        }
+        .score-item { display: flex; flex-direction: column; align-items: center; min-width: 80px; }
+        .score-label { font-size: 0.9rem; color: #666; margin-bottom: 4px; font-weight: 600; }
+        .score-val { font-weight: bold; color: #ff4757; font-size: 1.5rem; line-height: 1; }
+
+        #message-box { 
+            position: absolute; top: 30%; left: 50%; transform: translate(-50%, -50%); 
+            font-size: 4rem; font-weight: 900; color: #ff4757; text-shadow: 2px 2px 5px rgba(255,255,255,0.8);
+            opacity: 0; transition: opacity 0.3s; pointer-events: none; text-align: center;
+        }
+
+        .dialogue {
+            position: absolute; padding: 5px 10px; background: white; color: black;
+            border-radius: 10px; font-size: 0.9rem; font-weight: bold; pointer-events: none;
+            transform: translate(-50%, -100%); display: none; box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            border: 1px solid #ddd; z-index: 20;
+            white-space: nowrap; 
+        }
+        .dialogue:after {
+            content: ''; position: absolute; bottom: -5px; left: 50%; margin-left: -5px;
+            width: 0; height: 0; border-top: 5px solid white; border-left: 5px solid transparent; border-right: 5px solid transparent;
+        }
+
+        canvas { display: block; cursor: crosshair; }
+    </style>
+</head>
+<body>
+
+    <div id="ui-layer">
+        <div id="start-screen">
+            <div class="title">💉 간호부 볼링대회</div>
+            <div class="instructions">
+                화면을 <strong>원하는 방향으로 빠르게 스와이프</strong>하여 공을 굴리세요!<br>
+                총 3프레임 동안 경기가 진행됩니다.<br>
+                각 프레임당 2번의 투구 기회가 주어집니다.
+            </div>
+            <button class="btn" onclick="startGame()">경기 시작!</button>
+        </div>
+
+        <div id="score-board" style="display: none;">
+            <div class="score-item">
+                <span class="score-label">프레임</span>
+                <span class="score-val" id="frame-num">1</span>
+            </div>
+            <div class="score-item">
+                <span class="score-label">투구</span>
+                <span class="score-val" id="shot-num">1</span>
+            </div>
+            <div class="score-item">
+                <span class="score-label">현재 점수</span>
+                <span class="score-val" id="total-score">0</span>
+            </div>
+        </div>
+
+        <div id="message-box">STRIKE!</div>
+    </div>
+
+    <script>
+        // --- Constants & Variables ---
+        const ASSETS = {
+            obj: 'https://raw.githubusercontent.com/caxs23/3d-model/main/base.obj',
+            diffuse: 'https://raw.githubusercontent.com/caxs23/3d-model/main/texture_diffuse.png',
+            pbr: 'https://raw.githubusercontent.com/caxs23/3d-model/main/texture_pbr.png',
+            strikeSound: 'https://raw.githubusercontent.com/caxs23/3d-model/main/Bowling%20Strike%20-%20Sound%20Effect%20for%20editing%20(mp3cut.net).mp3',
+            throwSound: 'https://raw.githubusercontent.com/caxs23/3d-model/main/throw.mp3'
+        };
+
+        const DIALOGUES = ["으악!", "살려주세요", "억", "아이고", "퇴근하고 싶어", "선생님!", "꺅", "도망쳐!", "휴가 보내줘!", "오버타임 싫어!"];
+
+        let scene, camera, renderer, world;
+        let ball, ballBody, pins = [], pinBodies = [];
+        let isThrowing = false;
+        let frameCount = 1;
+        let shotCount = 1;
+        let totalScore = 0;
+        let gameActive = false;
+        let pinsStandingCount = 10;
+        let strikeSoundPlayed = false;
+
+        let swipeStart = { x: 0, y: 0, time: 0 };
+        let isMouseDown = false;
+
+        // Audio setup
+        const strikeSound = new Audio(ASSETS.strikeSound);
+        const throwSound = new Audio(ASSETS.throwSound);
+
+        function init() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xe0e6ed); 
+            scene.fog = new THREE.Fog(0xe0e6ed, 20, 60);
+
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+            resetCamera();
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            document.body.appendChild(renderer.domElement);
+
+            world = new CANNON.World();
+            world.gravity.set(0, -9.82, 0);
+
+            const wallPhysMaterial = new CANNON.Material("wallMaterial");
+            const ballPhysMaterial = new CANNON.Material("ballMaterial");
+            const pinPhysMaterial = new CANNON.Material("pinMaterial");
+
+            const wallContact = new CANNON.ContactMaterial(ballPhysMaterial, wallPhysMaterial, {
+                friction: 0.1, restitution: 0.7 
+            });
+            const pinContact = new CANNON.ContactMaterial(ballPhysMaterial, pinPhysMaterial, {
+                friction: 0.3, restitution: 0.3
+            });
+            
+            world.addContactMaterial(wallContact);
+            world.addContactMaterial(pinContact);
+
+            createLights();
+            createEnvironment(wallPhysMaterial);
+            createBall(ballPhysMaterial);
+            loadPinModel(pinPhysMaterial);
+
+            window.addEventListener('resize', onWindowResize);
+            document.addEventListener('touchstart', onTouchStart);
+            document.addEventListener('touchend', onTouchEnd);
+            document.addEventListener('mousedown', onMouseDown);
+            document.addEventListener('mouseup', onMouseUp);
+        }
+
+        function createLights() {
+            scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+            const sun = new THREE.DirectionalLight(0xffffff, 1);
+            sun.position.set(10, 20, 10);
+            sun.castShadow = true;
+            scene.add(sun);
+            scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 0.5));
+        }
+
+        function createEnvironment(wallMaterial) {
+            const laneGeo = new THREE.BoxGeometry(6, 0.2, 40);
+            const laneMat = new THREE.MeshStandardMaterial({ 
+                color: 0xd2a679, 
+                roughness: 0.1, 
+                metalness: 0.05 
+            });
+            const lane = new THREE.Mesh(laneGeo, laneMat);
+            lane.position.set(0, -0.1, -15);
+            lane.receiveShadow = true;
+            scene.add(lane);
+
+            const groundBody = new CANNON.Body({ mass: 0, shape: new CANNON.Box(new CANNON.Vec3(3, 0.1, 20)) });
+            groundBody.position.set(0, -0.1, -15);
+            world.addBody(groundBody);
+
+            const wallMat = new THREE.MeshStandardMaterial({ color: 0x444444 });
+            
+            const wallL = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1, 40), wallMat);
+            wallL.position.set(-3.25, 0.5, -15);
+            scene.add(wallL);
+            const wallLBody = new CANNON.Body({ mass: 0, shape: new CANNON.Box(new CANNON.Vec3(0.25, 0.5, 20)), material: wallMaterial });
+            wallLBody.position.set(-3.25, 0.5, -15);
+            world.addBody(wallLBody);
+
+            const wallR = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1, 40), wallMat);
+            wallR.position.set(3.25, 0.5, -15);
+            scene.add(wallR);
+            const wallRBody = new CANNON.Body({ mass: 0, shape: new CANNON.Box(new CANNON.Vec3(0.25, 0.5, 20)), material: wallMaterial });
+            wallRBody.position.set(3.25, 0.5, -15);
+            world.addBody(wallRBody);
+        }
+
+        function createBall(material) {
+            const ballRadius = 0.5;
+            ball = new THREE.Mesh(new THREE.SphereGeometry(ballRadius, 32, 32), new THREE.MeshStandardMaterial({ color: 0xff4757, metalness: 0.6, roughness: 0.1 }));
+            ball.castShadow = true;
+            scene.add(ball);
+
+            ballBody = new CANNON.Body({ 
+                mass: 6, 
+                shape: new CANNON.Sphere(ballRadius),
+                material: material 
+            });
+            world.addBody(ballBody);
+            resetBall();
+        }
+
+        function loadPinModel(material) {
+            const loader = new THREE.OBJLoader();
+            const texLoader = new THREE.TextureLoader();
+            const diffuse = texLoader.load(ASSETS.diffuse);
+            const pbr = texLoader.load(ASSETS.pbr);
+            const pinMaterial = new THREE.MeshStandardMaterial({ map: diffuse, roughnessMap: pbr, metalness: 0.3 });
+
+            loader.load(ASSETS.obj, (obj) => {
+                obj.traverse((child) => { if (child.isMesh) { child.material = pinMaterial; child.castShadow = true; } });
+                setupPins(obj, material);
+            });
+        }
+
+        function setupPins(model, material) {
+            const spacing = 1.0;
+            const offsetZ = -22;
+            const rows = 4;
+
+            for (let i = 0; i < rows; i++) {
+                for (let j = 0; j <= i; j++) {
+                    const pinInstance = model.clone();
+                    const x = (j - i * 0.5) * spacing;
+                    const z = offsetZ - i * spacing;
+                    
+                    pinInstance.scale.set(0.7, 0.7, 0.7);
+                    scene.add(pinInstance);
+                    pins.push(pinInstance);
+
+                    const pinBody = new CANNON.Body({ 
+                        mass: 0.8, 
+                        shape: new CANNON.Box(new CANNON.Vec3(0.3, 1.2, 0.3)),
+                        material: material 
+                    });
+                    
+                    pinBody.addEventListener("collide", (e) => {
+                        if (!isThrowing) return;
+
+                        const impactVelocity = e.contact.getImpactVelocityAlongNormal();
+                        
+                        // 충돌음 재생 (시도당 1회)
+                        if (!strikeSoundPlayed && (e.body === ballBody || e.target === ballBody) && impactVelocity > 2) {
+                            strikeSound.currentTime = 0;
+                            strikeSound.play().catch(e => console.log("Strike audio play failed: ", e));
+                            strikeSoundPlayed = true;
+                        }
+
+                        // 대사 출력 (물리 충돌 시, 쿨타임 1.5초)
+                        if (impactVelocity > 1.5) {
+                            showDialogue(pinInstance);
+                        }
+                    });
+
+                    world.addBody(pinBody);
+                    pinBodies.push(pinBody);
+
+                    const el = document.createElement('div');
+                    el.className = 'dialogue';
+                    document.body.appendChild(el);
+                    pinInstance.userData = { dialogueEl: el, isHit: false, initX: x, initZ: z, lastDialogueTime: 0 };
+                }
+            }
+            positionPins();
+        }
+
+        function positionPins() {
+            pins.forEach((pin, i) => {
+                if (!pin.userData.isHit) {
+                    const body = pinBodies[i];
+                    body.velocity.set(0,0,0);
+                    body.angularVelocity.set(0,0,0);
+                    body.position.set(pin.userData.initX, 1.2, pin.userData.initZ);
+                    body.quaternion.set(0,0,0,1);
+                    pin.visible = true;
+                } else {
+                    pin.visible = false;
+                    pinBodies[i].position.set(0, -100, 0); 
+                }
+            });
+        }
+
+        function startGame() {
+            document.getElementById('start-screen').style.display = 'none';
+            document.getElementById('score-board').style.display = 'flex';
+            gameActive = true;
+            resetFullPins();
+        }
+
+        function resetFullPins() {
+            pins.forEach(p => p.userData.isHit = false);
+            pinsStandingCount = 10;
+            positionPins();
+        }
+
+        function startAction(x, y) { if (!gameActive || isThrowing) return; swipeStart = { x, y, time: Date.now() }; }
+        function endAction(x, y) {
+            if (!gameActive || isThrowing) return;
+            const deltaX = x - swipeStart.x, deltaY = swipeStart.y - y, deltaTime = Date.now() - swipeStart.time;
+            if (deltaY > 50 && deltaTime < 400) {
+                const speedZ = Math.min(deltaY / deltaTime * 12, 40);
+                const speedX = (deltaX / deltaTime) * 5; 
+                throwBall(speedX, speedZ);
+            }
+        }
+
+        function onTouchStart(e) { startAction(e.touches[0].clientX, e.touches[0].clientY); }
+        function onTouchEnd(e) { endAction(e.changedTouches[0].clientX, e.changedTouches[0].clientY); }
+        function onMouseDown(e) { isMouseDown = true; startAction(e.clientX, e.clientY); }
+        function onMouseUp(e) { if(isMouseDown) { isMouseDown = false; endAction(e.clientX, e.clientY); } }
+
+        function throwBall(speedX, speedZ) {
+            isThrowing = true;
+            strikeSoundPlayed = false; // 충돌음 재생 상태 초기화
+
+            // 투구 사운드 재생
+            throwSound.currentTime = 0;
+            throwSound.play().catch(e => console.log("Throw audio play failed: ", e));
+
+            ballBody.velocity.set(speedX, 0, -speedZ);
+            ballBody.angularVelocity.set(-speedZ, 0, -speedX);
+            setTimeout(checkResult, 4500);
+        }
+
+        function checkResult() {
+            let hitThisTime = 0;
+            pins.forEach((pin, idx) => {
+                if (!pin.userData.isHit) {
+                    const body = pinBodies[idx];
+                    const up = new CANNON.Vec3(0, 1, 0);
+                    const pinUp = body.quaternion.vmult(new CANNON.Vec3(0, 1, 0));
+                    if (up.dot(pinUp) < 0.75 || body.position.y < 0.5) {
+                        hitThisTime++;
+                        pin.userData.isHit = true;
+                    }
+                }
+            });
+
+            totalScore += hitThisTime;
+            pinsStandingCount -= hitThisTime;
+            document.getElementById('total-score').innerText = totalScore;
+
+            if (hitThisTime > 0) {
+                if (shotCount === 1 && pinsStandingCount === 0) showMessage("STRIKE!");
+                else if (shotCount === 2 && pinsStandingCount === 0) showMessage("SPARE!");
+                else showMessage(`${hitThisTime} PINS!`);
+            } else {
+                showMessage("GUTTER...");
+            }
+
+            setTimeout(() => {
+                if (pinsStandingCount === 0 || shotCount === 2) {
+                    if (frameCount < 3) {
+                        frameCount++;
+                        shotCount = 1;
+                        resetFullPins();
+                        updateUI();
+                    } else {
+                        endGame();
+                    }
+                } else {
+                    shotCount = 2;
+                    updateUI();
+                }
+                resetBall();
+                isThrowing = false;
+            }, 2000);
+        }
+
+        function updateUI() {
+            document.getElementById('frame-num').innerText = frameCount;
+            document.getElementById('shot-num').innerText = shotCount;
+        }
+
+        function showDialogue(pin) {
+            const now = Date.now();
+            if (now - pin.userData.lastDialogueTime < 1500) return;
+            
+            const el = pin.userData.dialogueEl;
+            el.innerText = DIALOGUES[Math.floor(Math.random() * DIALOGUES.length)];
+            el.style.display = 'block';
+            pin.userData.lastDialogueTime = now;
+            
+            setTimeout(() => {
+                el.style.display = 'none';
+            }, 1200);
+        }
+
+        function showMessage(txt) {
+            const msg = document.getElementById('message-box');
+            msg.innerText = txt; msg.style.opacity = '1';
+            setTimeout(() => msg.style.opacity = '0', 2000);
+        }
+
+        function resetCamera() { camera.position.set(0, 4, 12); camera.lookAt(0, 0, -5); }
+
+        function resetBall() {
+            ballBody.velocity.set(0,0,0);
+            ballBody.angularVelocity.set(0,0,0);
+            ballBody.position.set(0, 0.5, 4);
+            ballBody.quaternion.set(0,0,0,1);
+            resetCamera();
+            positionPins(); 
+        }
+
+        function endGame() {
+            gameActive = false;
+            document.getElementById('start-screen').style.display = 'flex';
+            document.querySelector('.title').innerText = "대회 종료!";
+            document.querySelector('.instructions').innerHTML = `최종 점수: <strong>${totalScore}점</strong><br>수고하셨습니다!`;
+            document.querySelector('.btn').innerText = "다시 도전";
+            frameCount = 1; shotCount = 1; totalScore = 0;
+            updateUI();
+            resetFullPins();
+            resetBall();
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            if (gameActive) {
+                world.step(1/60);
+                ball.position.copy(ballBody.position);
+                ball.quaternion.copy(ballBody.quaternion);
+
+                if (isThrowing) {
+                    if (ball.position.z > -15) {
+                        camera.position.z += (ball.position.z + 6 - camera.position.z) * 0.1;
+                        camera.position.x += (ball.position.x * 0.5 - camera.position.x) * 0.1;
+                        camera.lookAt(ball.position.x, 1, ball.position.z - 5);
+                    } else {
+                        camera.position.lerp(new THREE.Vector3(0, 3, -13), 0.05);
+                        camera.lookAt(0, 0.5, -23);
+                    }
+                }
+
+                pins.forEach((pin, i) => {
+                    pin.position.copy(pinBodies[i].position);
+                    pin.quaternion.copy(pinBodies[i].quaternion);
+                    
+                    if (pin.userData.dialogueEl.style.display === 'block') {
+                        const vector = pin.position.clone();
+                        vector.y += 1.5; 
+                        vector.project(camera);
+
+                        const x = (vector.x * 0.5 + 0.5) * window.innerWidth;
+                        const y = (vector.y * -0.5 + 0.5) * window.innerHeight;
+
+                        pin.userData.dialogueEl.style.left = `${x}px`;
+                        pin.userData.dialogueEl.style.top = `${y}px`;
+
+                        if (vector.z > 1 || vector.z < -1) {
+                            pin.userData.dialogueEl.style.display = 'none';
+                        }
+                    }
+                });
+            }
+            renderer.render(scene, camera);
+        }
+
+        window.onload = () => { init(); animate(); };
+    </script>
+</body>
+</html>
