@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>간호부 볼링대회</title>
+    <title>간호부 볼링대회 - 수정본</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
@@ -95,7 +95,8 @@
             <div class="title">💉 간호부 볼링대회</div>
             <div class="instructions">
                 화면을 <strong>원하는 방향으로 빠르게 스와이프</strong>하여 공을 굴리세요!<br>
-                총 3프레임 동안 경기가 진행됩니다.
+                총 3프레임 동안 경기가 진행됩니다.<br>
+                각 프레임당 2번의 투구 기회가 주어집니다.
             </div>
             <div class="btn-group">
                 <button class="btn" onclick="startOpening()">경기 시작 (오프닝 보기)</button>
@@ -114,7 +115,7 @@
                 <div class="opening-text-box">으아악! 이게 뭐야!</div>
             </div>
             <div id="scene-4" class="opening-scene" style="background-image: url('https://raw.githubusercontent.com/caxs23/3d-model/main/opening4.png');">
-                <div class="opening-text-box">내가.. 볼링핀이 되어버렸어!!</div>
+                <div class="opening-text-box">내가.. 볼링핀이 되어버렸어!!<br><br><span style="font-size: 1.1rem; color: #ffeb3b;">볼링핀이 되어버린 간호사로 볼링을 해보자!</span></div>
             </div>
             <button id="opening-next-btn" class="btn" onclick="nextOpeningScene()">계속</button>
         </div>
@@ -150,13 +151,58 @@
 
         let scene, camera, renderer, world;
         let ball, ballBody, pins = [], pinBodies = [];
-        let isThrowing = false, gameActive = false;
-        let frameCount = 1, shotCount = 1, totalScore = 0;
-        let pinsStandingCount = 10, strikeSoundPlayed = false;
-        let swipeStart = { x: 0, y: 0, time: 0 }, isMouseDown = false;
+        let isThrowing = false;
+        let frameCount = 1;
+        let shotCount = 1;
+        let totalScore = 0;
+        let gameActive = false;
+        let pinsStandingCount = 10;
+        let strikeSoundPlayed = false;
+
+        let swipeStart = { x: 0, y: 0, time: 0 };
+        let isMouseDown = false;
 
         const strikeSound = new Audio(ASSETS.strikeSound);
         const throwSound = new Audio(ASSETS.throwSound);
+
+        let currentOpeningScene = 0;
+        const totalOpeningScenes = 4;
+
+        function startOpening() {
+            document.getElementById('start-screen').style.display = 'none';
+            document.getElementById('opening-container').style.display = 'block';
+            currentOpeningScene = 0; 
+            nextOpeningScene();
+        }
+
+        function nextOpeningScene() {
+            currentOpeningScene++;
+            if (currentOpeningScene <= totalOpeningScenes) {
+                if (currentOpeningScene > 1) document.getElementById(`scene-${currentOpeningScene - 1}`).classList.remove('active');
+                const activeScene = document.getElementById(`scene-${currentOpeningScene}`);
+                activeScene.classList.add('active');
+                const nextBtn = document.getElementById('opening-next-btn');
+                nextBtn.style.display = 'block';
+                nextBtn.innerText = (currentOpeningScene === totalOpeningScenes) ? "진행하기" : "계속";
+            } else {
+                finishOpening();
+            }
+        }
+
+        function finishOpening() {
+            document.getElementById('opening-container').style.display = 'none';
+            document.getElementById('score-board').style.display = 'flex';
+            gameActive = true;
+            resetFullPins();
+        }
+
+        function startGameDirectly() {
+            document.getElementById('start-screen').style.display = 'none';
+            document.getElementById('opening-container').style.display = 'none';
+            document.getElementById('score-board').style.display = 'flex';
+            gameActive = true;
+            resetFullPins();
+        }
 
         function init() {
             scene = new THREE.Scene();
@@ -173,11 +219,22 @@
 
             world = new CANNON.World();
             world.gravity.set(0, -9.82, 0);
+            // [수정] 월드 전체에 Sleep 기능 활성화
+            world.allowSleep = true;
+
+            const wallPhysMaterial = new CANNON.Material("wallMaterial");
+            const ballPhysMaterial = new CANNON.Material("ballMaterial");
+            const pinPhysMaterial = new CANNON.Material("pinMaterial");
+
+            const wallContact = new CANNON.ContactMaterial(ballPhysMaterial, wallPhysMaterial, { friction: 0.1, restitution: 0.7 });
+            const pinContact = new CANNON.ContactMaterial(ballPhysMaterial, pinPhysMaterial, { friction: 0.3, restitution: 0.3 });
+            world.addContactMaterial(wallContact);
+            world.addContactMaterial(pinContact);
 
             createLights();
-            createEnvironment();
-            createBall();
-            loadPinModel();
+            createEnvironment(wallPhysMaterial);
+            createBall(ballPhysMaterial);
+            loadPinModel(pinPhysMaterial);
 
             window.addEventListener('resize', onWindowResize);
             document.addEventListener('touchstart', onTouchStart);
@@ -192,52 +249,50 @@
             sun.position.set(10, 20, 10);
             sun.castShadow = true;
             scene.add(sun);
+            scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 0.5));
         }
 
-        function createEnvironment() {
-            // 시각적 레인 (나무 판 무늬 포함)
+        function createEnvironment(wallMaterial) {
             const laneGeo = new THREE.BoxGeometry(6, 0.2, 40);
-            const laneMat = new THREE.MeshStandardMaterial({ color: 0xd2a679, roughness: 0.3 });
+            const laneMat = new THREE.MeshStandardMaterial({ color: 0xd2a679, roughness: 0.2, metalness: 0.05 });
             const lane = new THREE.Mesh(laneGeo, laneMat);
-            lane.position.set(0, -0.1, -15); // 상단 표면이 y=0에 오도록 설정
+            lane.position.set(0, -0.1, -15);
             lane.receiveShadow = true;
             scene.add(lane);
 
-            const lineMat = new THREE.MeshBasicMaterial({ color: 0x555555, transparent: true, opacity: 0.3 });
-            for (let x = -2.5; x <= 2.5; x += 0.5) {
-                const line = new THREE.Mesh(new THREE.PlaneGeometry(0.02, 40), lineMat);
+            const plankWidth = 0.5;
+            const lineMat = new THREE.MeshBasicMaterial({ color: 0x555555, transparent: true, opacity: 0.4 });
+            for (let x = -2.5; x <= 2.5; x += plankWidth) {
+                const lineGeo = new THREE.PlaneGeometry(0.02, 40);
+                const line = new THREE.Mesh(lineGeo, lineMat);
                 line.rotation.x = -Math.PI / 2;
                 line.position.set(x, 0.005, -15);
                 scene.add(line);
             }
 
-            // 물리적 바닥 (정확히 y=0에 위치)
-            const groundBody = new CANNON.Body({ mass: 0, shape: new CANNON.Plane() });
-            groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
-            groundBody.position.set(0, 0, 0);
+            const groundBody = new CANNON.Body({ mass: 0, shape: new CANNON.Box(new CANNON.Vec3(3, 0.1, 20)) });
+            groundBody.position.set(0, -0.1, -15);
             world.addBody(groundBody);
 
-            // 가이드 월
             const wallMat = new THREE.MeshStandardMaterial({ color: 0x444444 });
             const wallL = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1, 40), wallMat);
             wallL.position.set(-3.25, 0.5, -15);
             scene.add(wallL);
-            const wallLBody = new CANNON.Body({ mass: 0, shape: new CANNON.Box(new CANNON.Vec3(0.25, 0.5, 20)) });
+            const wallLBody = new CANNON.Body({ mass: 0, shape: new CANNON.Box(new CANNON.Vec3(0.25, 0.5, 20)), material: wallMaterial });
             wallLBody.position.set(-3.25, 0.5, -15);
             world.addBody(wallLBody);
 
             const wallR = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1, 40), wallMat);
             wallR.position.set(3.25, 0.5, -15);
             scene.add(wallR);
-            const wallRBody = new CANNON.Body({ mass: 0, shape: new CANNON.Box(new CANNON.Vec3(0.25, 0.5, 20)) });
+            const wallRBody = new CANNON.Body({ mass: 0, shape: new CANNON.Box(new CANNON.Vec3(0.25, 0.5, 20)), material: wallMaterial });
             wallRBody.position.set(3.25, 0.5, -15);
             world.addBody(wallRBody);
         }
 
-        function createBall() {
+        function createBall(material) {
             const ballRadius = 0.5;
             ball = new THREE.Group();
-
             const sphere = new THREE.Mesh(
                 new THREE.SphereGeometry(ballRadius, 32, 32), 
                 new THREE.MeshStandardMaterial({ color: 0xff4757, metalness: 0.6, roughness: 0.1 })
@@ -245,85 +300,90 @@
             sphere.castShadow = true;
             ball.add(sphere);
 
-            // 손가락 구멍 (구체 안으로 살짝 파묻히게 배치)
-            const holeGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.1, 16);
+            const holeGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.05, 16);
             const holeMat = new THREE.MeshBasicMaterial({ color: 0x111111 });
-            const holePositions = [
-                { p: [0, 0.46, 0.15], r: [0.4, 0, 0] },
-                { p: [0.15, 0.44, 0.05], r: [0.4, 0, 0.3] },
-                { p: [-0.15, 0.44, 0.05], r: [0.4, 0, -0.3] }
+            const holes = [
+                { x: 0, y: 0.45, z: 0.15, rx: 0.4 },
+                { x: 0.15, y: 0.43, z: 0.05, rx: 0.4, ry: 0.3 },
+                { x: -0.15, y: 0.43, z: 0.05, rx: 0.4, ry: -0.3 }
             ];
-            holePositions.forEach(h => {
+            holes.forEach(data => {
                 const hole = new THREE.Mesh(holeGeo, holeMat);
-                hole.position.set(...h.p);
-                hole.rotation.set(...h.r);
+                hole.position.set(data.x, data.y, data.z);
+                if (data.rx) hole.rotation.x = data.rx;
+                if (data.ry) hole.rotation.z = data.ry;
                 ball.add(hole);
             });
 
             scene.add(ball);
-            ballBody = new CANNON.Body({ mass: 6, shape: new CANNON.Sphere(ballRadius) });
+            ballBody = new CANNON.Body({ mass: 6, shape: new CANNON.Sphere(ballRadius), material: material });
             world.addBody(ballBody);
             resetBall();
         }
 
-        function loadPinModel() {
+        function loadPinModel(material) {
             const loader = new THREE.OBJLoader();
             const texLoader = new THREE.TextureLoader();
-            const pinMaterial = new THREE.MeshStandardMaterial({ 
-                map: texLoader.load(ASSETS.diffuse), 
-                roughnessMap: texLoader.load(ASSETS.pbr), 
-                metalness: 0.3 
-            });
+            const diffuse = texLoader.load(ASSETS.diffuse);
+            const pbr = texLoader.load(ASSETS.pbr);
+            const pinMaterial = new THREE.MeshStandardMaterial({ map: diffuse, roughnessMap: pbr, metalness: 0.3 });
 
             loader.load(ASSETS.obj, (obj) => {
-                obj.traverse(c => { if (c.isMesh) { c.material = pinMaterial; c.castShadow = true; } });
-                setupPins(obj);
+                // [수정] 모델의 기하학적 중심을 정중앙(0,0,0)으로 이동시켜 물리 바디와 일치시킴
+                obj.traverse((child) => { 
+                    if (child.isMesh) { 
+                        child.geometry.center(); 
+                        child.material = pinMaterial; 
+                        child.castShadow = true; 
+                    } 
+                });
+                setupPins(obj, material);
             });
         }
 
-        function setupPins(model) {
-            const spacing = 1.3, offsetZ = -22, rows = 4;
+        function setupPins(model, material) {
+            const spacing = 1.3;
+            const offsetZ = -22;
+            const rows = 4;
+            // [수정] 핀 높이와 충돌 박스 크기 최적화
             const pinHeight = 1.8;
-            const pinHalfHeight = pinHeight / 2;
 
             for (let i = 0; i < rows; i++) {
                 for (let j = 0; j <= i; j++) {
-                    const pinWrap = new THREE.Group();
                     const pinInstance = model.clone();
-                    // 모델을 위로 절반만큼 들어올려, 그룹의 원점(0,0,0)이 모델의 바닥이 되게 함
-                    pinInstance.position.y = 0; 
-                    pinWrap.add(pinInstance);
-                    scene.add(pinWrap);
-                    pins.push(pinWrap);
-
                     const x = (j - i * 0.5) * spacing;
                     const z = offsetZ - i * spacing;
+                    pinInstance.scale.set(1.05, 1.05, 1.05);
+                    scene.add(pinInstance);
+                    pins.push(pinInstance);
 
-                    // 물리 바디는 중심 기준이므로, 위치 설정 시 y값에 절반을 더함
-                    const body = new CANNON.Body({ 
+                    const pinBody = new CANNON.Body({ 
                         mass: 0.8, 
-                        shape: new CANNON.Box(new CANNON.Vec3(0.25, pinHalfHeight, 0.25)) 
+                        shape: new CANNON.Box(new CANNON.Vec3(0.3, pinHeight / 2, 0.3)), 
+                        material: material,
+                        // [수정] 개별 바디에 Sleep 허용 및 설정
+                        allowSleep: true,
+                        sleepSpeedLimit: 0.1,
+                        sleepTimeLimit: 1.0
                     });
                     
-                    body.addEventListener("collide", (e) => {
+                    pinBody.addEventListener("collide", (e) => {
                         if (!isThrowing) return;
-                        if (!strikeSoundPlayed && (e.body === ballBody || e.target === ballBody)) {
-                            strikeSound.currentTime = 0; strikeSound.play().catch(() => {});
+                        const impactVelocity = e.contact.getImpactVelocityAlongNormal();
+                        if (!strikeSoundPlayed && (e.body === ballBody || e.target === ballBody) && impactVelocity > 2) {
+                            strikeSound.currentTime = 0; strikeSound.play().catch(e => console.log(e));
                             strikeSoundPlayed = true;
                         }
-                        showDialogue(pinWrap);
+                        if (impactVelocity > 1.5) showDialogue(pinInstance);
                     });
-                    world.addBody(body);
-                    pinBodies.push(body);
+                    world.addBody(pinBody);
+                    pinBodies.push(pinBody);
 
                     const el = document.createElement('div');
                     el.className = 'dialogue';
                     document.body.appendChild(el);
                     
-                    pinWrap.userData = { 
-                        dialogueEl: el, isHit: false, initX: x, initZ: z, 
-                        halfHeight: pinHalfHeight 
-                    };
+                    pinInstance.userData = { dialogueEl: el, isHit: false, initX: x, initZ: z, lastDialogueTime: 0, halfHeight: pinHeight / 2 };
                 }
             }
             positionPins();
@@ -333,62 +393,85 @@
             pins.forEach((pin, i) => {
                 const body = pinBodies[i];
                 if (!pin.userData.isHit) {
-                    body.velocity.set(0,0,0); body.angularVelocity.set(0,0,0);
-                    // 물리 바디의 중심은 y = 절반 높이 (바닥이 y=0에 닿도록)
-                    body.position.set(pin.userData.initX, pin.userData.halfHeight + 0.01, pin.userData.initZ);
+                    body.velocity.set(0,0,0); 
+                    body.angularVelocity.set(0,0,0);
+                    // [수정] 바디의 중심 위치를 핀 높이의 절반에 맞춰 바닥에 딱 붙게 설정
+                    body.position.set(pin.userData.initX, pin.userData.halfHeight, pin.userData.initZ);
                     body.quaternion.set(0,0,0,1);
                     pin.visible = true;
+                    // [수정] 배치 직후 바로 Sleep 모드 진입 (충격 전까지 안 움직임)
+                    body.sleep();
                 } else {
-                    pin.visible = false; body.position.set(0, -100, 0);
+                    pin.visible = false; 
+                    body.position.set(0, -100, 0); 
                 }
             });
         }
 
+        function resetFullPins() {
+            pins.forEach(p => p.userData.isHit = false);
+            pinsStandingCount = 10;
+            positionPins();
+        }
+
+        function startAction(x, y) { if (!gameActive || isThrowing) return; swipeStart = { x, y, time: Date.now() }; }
+        function endAction(x, y) {
+            if (!gameActive || isThrowing) return;
+            const deltaX = x - swipeStart.x, deltaY = swipeStart.y - y, deltaTime = Date.now() - swipeStart.time;
+            if (deltaY > 50 && deltaTime < 400) {
+                const speedZ = Math.min(deltaY / deltaTime * 12, 40);
+                const speedX = (deltaX / deltaTime) * 5; 
+                throwBall(speedX, speedZ);
+            }
+        }
+
+        function onTouchStart(e) { startAction(e.touches[0].clientX, e.touches[0].clientY); }
+        function onTouchEnd(e) { endAction(e.changedTouches[0].clientX, e.changedTouches[0].clientY); }
+        function onMouseDown(e) { isMouseDown = true; startAction(e.clientX, e.clientY); }
+        function onMouseUp(e) { if(isMouseDown) { isMouseDown = false; endAction(e.clientX, e.clientY); } }
+
         function throwBall(speedX, speedZ) {
-            isThrowing = true; strikeSoundPlayed = false;
-            throwSound.currentTime = 0; throwSound.play().catch(() => {});
+            isThrowing = true;
+            strikeSoundPlayed = false;
+            throwSound.currentTime = 0; throwSound.play().catch(e => console.log(e));
             ballBody.velocity.set(speedX, 0, -speedZ);
             ballBody.angularVelocity.set(-speedZ, 0, -speedX);
             setTimeout(checkResult, 4500);
         }
 
         function checkResult() {
-            let hitCount = 0;
+            let hitThisTime = 0;
             pins.forEach((pin, idx) => {
                 if (!pin.userData.isHit) {
                     const body = pinBodies[idx];
                     const up = new CANNON.Vec3(0, 1, 0);
                     const pinUp = body.quaternion.vmult(new CANNON.Vec3(0, 1, 0));
-                    // 핀이 눕거나(기울기), 공중에 뜨거나, 바닥 아래로 내려갔을 때 처리
-                    if (up.dot(pinUp) < 0.8 || body.position.y < pin.userData.halfHeight * 0.5) {
-                        hitCount++; pin.userData.isHit = true;
+                    if (up.dot(pinUp) < 0.75 || body.position.y < (pin.userData.halfHeight * 0.6)) {
+                        hitThisTime++; pin.userData.isHit = true;
                     }
                 }
             });
 
-            totalScore += hitCount;
-            pinsStandingCount -= hitCount;
+            totalScore += hitThisTime;
+            pinsStandingCount -= hitThisTime;
             document.getElementById('total-score').innerText = totalScore;
 
-            showMessage(hitCount === 10 && shotCount === 1 ? "STRIKE!" : (pinsStandingCount === 0 ? "SPARE!" : `${hitCount} PINS!`));
+            if (hitThisTime > 0) {
+                if (shotCount === 1 && pinsStandingCount === 0) showMessage("STRIKE!");
+                else if (shotCount === 2 && pinsStandingCount === 0) showMessage("SPARE!");
+                else showMessage(`${hitThisTime} PINS!`);
+            } else {
+                showMessage("GUTTER...");
+            }
 
             setTimeout(() => {
                 if (pinsStandingCount === 0 || shotCount === 2) {
-                    if (frameCount < 3) { frameCount++; shotCount = 1; resetFullPins(); } else { endGame(); return; }
-                } else { shotCount = 2; }
-                updateUI(); resetBall(); isThrowing = false;
-            }, 1500);
-        }
-
-        function resetBall() {
-            ballBody.velocity.set(0,0,0); ballBody.angularVelocity.set(0,0,0);
-            ballBody.position.set(0, 0.5, 4); ballBody.quaternion.set(0,0,0,1);
-            resetCamera(); positionPins();
-        }
-
-        function resetFullPins() {
-            pins.forEach(p => p.userData.isHit = false);
-            pinsStandingCount = 10; positionPins();
+                    if (frameCount < 3) { frameCount++; shotCount = 1; resetFullPins(); updateUI(); } 
+                    else endGame();
+                } else { shotCount = 2; updateUI(); }
+                resetBall();
+                isThrowing = false;
+            }, 2000);
         }
 
         function updateUI() {
@@ -396,47 +479,46 @@
             document.getElementById('shot-num').innerText = shotCount;
         }
 
+        function showDialogue(pin) {
+            const now = Date.now();
+            if (now - pin.userData.lastDialogueTime < 1500) return;
+            const el = pin.userData.dialogueEl;
+            el.innerText = DIALOGUES[Math.floor(Math.random() * DIALOGUES.length)];
+            el.style.display = 'block';
+            pin.userData.lastDialogueTime = now;
+            setTimeout(() => el.style.display = 'none', 1200);
+        }
+
         function showMessage(txt) {
             const msg = document.getElementById('message-box');
             msg.innerText = txt; msg.style.opacity = '1';
-            setTimeout(() => msg.style.opacity = '0', 1500);
-        }
-
-        function showDialogue(pin) {
-            const el = pin.userData.dialogueEl;
-            if (el.style.display === 'block') return;
-            el.innerText = DIALOGUES[Math.floor(Math.random() * DIALOGUES.length)];
-            el.style.display = 'block';
-            setTimeout(() => el.style.display = 'none', 1000);
+            setTimeout(() => msg.style.opacity = '0', 2000);
         }
 
         function resetCamera() { camera.position.set(0, 4, 12); camera.lookAt(0, 0, -5); }
-        function onWindowResize() { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); }
-        function onTouchStart(e) { startAction(e.touches[0].clientX, e.touches[0].clientY); }
-        function onTouchEnd(e) { endAction(e.changedTouches[0].clientX, e.changedTouches[0].clientY); }
-        function onMouseDown(e) { isMouseDown = true; startAction(e.clientX, e.clientY); }
-        function onMouseUp(e) { if(isMouseDown) { isMouseDown = false; endAction(e.clientX, e.clientY); } }
-        function startAction(x, y) { if (!gameActive || isThrowing) return; swipeStart = { x, y, time: Date.now() }; }
-        function endAction(x, y) {
-            if (!gameActive || isThrowing) return;
-            const dy = swipeStart.y - y, dt = Date.now() - swipeStart.time;
-            if (dy > 50 && dt < 400) throwBall((x - swipeStart.x) / dt * 5, Math.min(dy / dt * 12, 40));
+
+        function resetBall() {
+            ballBody.velocity.set(0,0,0); ballBody.angularVelocity.set(0,0,0);
+            ballBody.position.set(0, 0.5, 4); ballBody.quaternion.set(0,0,0,1);
+            resetCamera(); positionPins(); 
         }
 
-        function startOpening() { document.getElementById('start-screen').style.display = 'none'; document.getElementById('opening-container').style.display = 'block'; currentOpeningScene = 0; nextOpeningScene(); }
-        let currentOpeningScene = 0;
-        function nextOpeningScene() {
-            currentOpeningScene++;
-            if (currentOpeningScene <= 4) {
-                if (currentOpeningScene > 1) document.getElementById(`scene-${currentOpeningScene - 1}`).classList.remove('active');
-                document.getElementById(`scene-${currentOpeningScene}`).classList.add('active');
-                const btn = document.getElementById('opening-next-btn');
-                btn.style.display = 'block'; btn.innerText = currentOpeningScene === 4 ? "시작하기" : "계속";
-            } else { finishOpening(); }
+        function endGame() {
+            gameActive = false;
+            document.getElementById('start-screen').style.display = 'flex';
+            document.querySelector('.title').innerText = "대회 종료!";
+            document.querySelector('.instructions').innerHTML = `최종 점수: <strong>${totalScore}점</strong><br>수고하셨습니다!`;
+            const btnGroup = document.querySelector('.btn-group');
+            btnGroup.innerHTML = `<button class="btn" onclick="startOpening()">다시 하기 (오프닝 포함)</button><button class="btn secondary" onclick="startGameDirectly()">컷신 없이 바로 시작</button>`;
+            frameCount = 1; shotCount = 1; totalScore = 0;
+            updateUI(); resetFullPins(); resetBall();
         }
-        function finishOpening() { document.getElementById('opening-container').style.display = 'none'; document.getElementById('score-board').style.display = 'flex'; gameActive = true; resetFullPins(); }
-        function startGameDirectly() { document.getElementById('start-screen').style.display = 'none'; document.getElementById('score-board').style.display = 'flex'; gameActive = true; resetFullPins(); }
-        function endGame() { gameActive = false; document.getElementById('start-screen').style.display = 'flex'; document.querySelector('.title').innerText = "결과: " + totalScore + "점"; frameCount = 1; shotCount = 1; totalScore = 0; updateUI(); }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
 
         function animate() {
             requestAnimationFrame(animate);
@@ -448,20 +530,28 @@
                 if (isThrowing) {
                     if (ball.position.z > -15) {
                         camera.position.z += (ball.position.z + 6 - camera.position.z) * 0.1;
-                        camera.lookAt(ball.position.x * 0.5, 1, ball.position.z - 5);
+                        camera.position.x += (ball.position.x * 0.5 - camera.position.x) * 0.1;
+                        camera.lookAt(ball.position.x, 1, ball.position.z - 5);
+                    } else {
+                        camera.position.lerp(new THREE.Vector3(0, 3, -13), 0.05);
+                        camera.lookAt(0, 0.5, -23);
                     }
                 }
 
                 pins.forEach((pin, i) => {
-                    const body = pinBodies[i];
-                    // 물리 바디의 중심에서 높이의 절반을 뺀 위치에 시각적 모델(바닥 기준) 배치
-                    pin.position.set(body.position.x, body.position.y - pin.userData.halfHeight, body.position.z);
-                    pin.quaternion.copy(body.quaternion);
+                    // [수정] 모델 기하학 중심을 맞췄으므로 위치와 회전값을 그대로 복사하면 정확히 일치함
+                    pin.position.copy(pinBodies[i].position);
+                    pin.quaternion.copy(pinBodies[i].quaternion);
 
                     if (pin.userData.dialogueEl.style.display === 'block') {
-                        const v = pin.position.clone(); v.y += 2; v.project(camera);
-                        pin.userData.dialogueEl.style.left = `${(v.x * 0.5 + 0.5) * window.innerWidth}px`;
-                        pin.userData.dialogueEl.style.top = `${(v.y * -0.5 + 0.5) * window.innerHeight}px`;
+                        const vector = pin.position.clone();
+                        vector.y += (pin.userData.halfHeight * 2);
+                        vector.project(camera);
+                        const x = (vector.x * 0.5 + 0.5) * window.innerWidth;
+                        const y = (vector.y * -0.5 + 0.5) * window.innerHeight;
+                        pin.userData.dialogueEl.style.left = `${x}px`;
+                        pin.userData.dialogueEl.style.top = `${y}px`;
+                        if (vector.z > 1 || vector.z < -1) pin.userData.dialogueEl.style.display = 'none';
                     }
                 });
             }
