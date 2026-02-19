@@ -92,7 +92,7 @@
 
     <div id="ui-layer">
         <div id="start-screen">
-            <div class="title">💉 간호부 볼링대회</div>
+            <div class="title">간호부<br>볼링대회</div>
             <div class="instructions">
                 화면을 <strong>원하는 방향으로 빠르게 스와이프</strong>하여 공을 굴리세요!<br>
                 총 3프레임 동안 경기가 진행됩니다.<br>
@@ -319,7 +319,7 @@
                 mass: 6, 
                 shape: new CANNON.Sphere(ballRadius), 
                 material: material,
-                allowSleep: true // 볼링공도 Sleep 허용 (안정성)
+                allowSleep: true
             });
             world.addBody(ballBody);
             resetBall();
@@ -433,10 +433,7 @@
             isThrowing = true;
             strikeSoundPlayed = false;
             throwSound.currentTime = 0; throwSound.play().catch(e => console.log(e));
-            
-            // [버그 해결] 공을 던지기 전 Sleep 상태인 공을 강제로 깨움
             ballBody.wakeUp();
-            
             ballBody.velocity.set(speedX, 0, -speedZ);
             ballBody.angularVelocity.set(-speedZ, 0, -speedX);
             setTimeout(checkResult, 4500);
@@ -447,10 +444,24 @@
             pins.forEach((pin, idx) => {
                 if (!pin.userData.isHit) {
                     const body = pinBodies[idx];
+                    
+                    // 수직 벡터(0, 1, 0)
                     const up = new CANNON.Vec3(0, 1, 0);
+                    // 핀의 현재 상단 방향 벡터 계산
                     const pinUp = body.quaternion.vmult(new CANNON.Vec3(0, 1, 0));
-                    if (up.dot(pinUp) < 0.75 || body.position.y < (pin.userData.halfHeight * 0.6)) {
-                        hitThisTime++; pin.userData.isHit = true;
+                    
+                    // [판정 완화 수정] 
+                    // 기존 dot product 임계값 0.75 (약 41도 이상 기울어져야 인정)
+                    // 수정 임계값 0.9 (약 25도 정도만 기울어져도 넘어짐 인정)
+                    const angleCheck = up.dot(pinUp) < 0.9;
+                    
+                    // 기존 높이 임계값 (절반 높이의 60% 미만)
+                    // 수정 높이 임계값 (절반 높이의 85% 미만으로 기준 상향 - 조금만 내려가도 인정)
+                    const heightCheck = body.position.y < (pin.userData.halfHeight * 0.85);
+
+                    if (angleCheck || heightCheck) {
+                        hitThisTime++; 
+                        pin.userData.isHit = true;
                     }
                 }
             });
@@ -503,7 +514,7 @@
         function resetBall() {
             ballBody.velocity.set(0,0,0); ballBody.angularVelocity.set(0,0,0);
             ballBody.position.set(0, 0.5, 4); ballBody.quaternion.set(0,0,0,1);
-            ballBody.sleep(); // 대기 상태에서 리소스 절약을 위해 수면 모드
+            ballBody.sleep();
             resetCamera(); positionPins(); 
         }
 
